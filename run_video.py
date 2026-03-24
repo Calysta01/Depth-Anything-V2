@@ -5,6 +5,7 @@ import matplotlib
 import numpy as np
 import os
 import torch
+import time
 
 from depth_anything_v2.dpt import DepthAnythingV2
 
@@ -65,13 +66,33 @@ if __name__ == '__main__':
         output_path = os.path.join(args.outdir, os.path.splitext(os.path.basename(filename))[0] + '.mp4')
         out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*"mp4v"), frame_rate, (output_width, frame_height))
         
+        # --- Tambahkan penghitung frame di sini ---
+        frame_count = 0
+
+        # ==========================================
+        # 1. NYALAKAN STOPWATCH TOTAL DI SINI
+        total_start_time = time.time() 
+        # ==========================================
+
         while raw_video.isOpened():
             ret, raw_frame = raw_video.read()
             if not ret:
                 break
             
+            frame_count += 1
+
+            # --- MULAI MENGHITUNG WAKTU ---
+            start_time = time.time()
+
             depth = depth_anything.infer_image(raw_frame, args.input_size)
             
+            # --- SELESAI MENGHITUNG WAKTU ---
+            end_time = time.time()
+            inference_time = end_time - start_time
+            
+            # Cetak waktu per frame menimpa baris yang sama (pakai \r dan flush=True)
+            print(f"\rMemproses frame {frame_count} | Waktu AI: {inference_time:.4f} detik", end="", flush=True)
+
             depth = (depth - depth.min()) / (depth.max() - depth.min()) * 255.0
             depth = depth.astype(np.uint8)
             
@@ -88,5 +109,15 @@ if __name__ == '__main__':
                 
                 out.write(combined_frame)
         
+        # ==========================================
+        # 2. MATIKAN STOPWATCH TOTAL DI SINI
+        total_end_time = time.time()
+        waktu_total = total_end_time - total_start_time
+        # ==========================================
+        
+        print(f"\nSelesai memproses video!")
+        print(f"-> TOTAL WAKTU KESELURUHAN: {waktu_total:.2f} detik untuk {frame_count} frame.")
+        print("-" * 50)
+
         raw_video.release()
         out.release()
